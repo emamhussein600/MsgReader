@@ -134,6 +134,7 @@ public class MsgReaderBean implements Serializable {
         }
     }
 
+    // Helper Method To Extract CC And To List Emails
     private List<String> extractEmailsFromHeader(String headers, String headerName, Pattern emailPattern) {
         String[] lines = headers.split("\r\n|\r|\n");
         StringBuilder headerBuilder = new StringBuilder();
