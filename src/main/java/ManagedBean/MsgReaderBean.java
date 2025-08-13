@@ -18,8 +18,11 @@ import org.primefaces.model.file.UploadedFile;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -36,8 +39,7 @@ public class MsgReaderBean implements Serializable {
     private EmailData emailData;
     private UploadedFile uploadedFile;
 
-    public MsgReaderBean() {
-    }
+    private List<EmailData> list;
 
     public void msgReadFrom() {
         if (uploadedFile != null) {
@@ -45,31 +47,18 @@ public class MsgReaderBean implements Serializable {
                 byte[] fileBytes = uploadedFile.getContent(); // get the file content
                 Message msg = new MsgParser().parseMsg(new ByteArrayInputStream(fileBytes));
 
+                Pattern emailPattern = Pattern.compile("[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}");
                 emailData = new EmailData();
 
                 // Subject & Body
                 emailData.setSubject(msg.getSubject());
+                emailData.setSender(msg.getFromEmail());
                 emailData.setBody(msg.getBodyText());
-
-                // To list
-                if (msg.getDisplayTo() != null) {
-                    List<String> toList = Arrays.stream(msg.getDisplayTo().split(";"))
-                            .map(String::trim)
-                            .collect(Collectors.toList());
-                    emailData.setToList(toList);
-                }
-
-                // Cc list
-                if (msg.getDisplayCc() != null) {
-                    List<String> ccList = Arrays.stream(msg.getDisplayCc().split(";"))
-                            .map(String::trim)
-                            .collect(Collectors.toList());
-                    emailData.setCcList(ccList);
-                }
-
+                emailData.setToList(extractEmailsFromHeader(msg.getHeaders(), "to", emailPattern));
+                emailData.setCcList(extractEmailsFromHeader(msg.getHeaders(), "cc", emailPattern));
                 // Save attachments to Desktop
                 String desktopPath = System.getProperty("user.home") + "/Desktop/";
-                
+
                 //for set Attach List
                 List<AttachmentData> attachmentList = msg.getAttachments().stream()
                         .map(att -> {
@@ -89,15 +78,14 @@ public class MsgReaderBean implements Serializable {
                             }
                         }).collect(Collectors.toList());
                 emailData.setAttachments(attachmentList);
-                
-                
+
                 // Print attachments
                 if (emailData.getAttachments() != null) {
                     System.out.println("Attachments:");
                     for (AttachmentData attData : emailData.getAttachments()) {
                         System.out.println("Filename: " + attData.getFileName());
 
-                        if (attData.getFileContent()!= null) {
+                        if (attData.getFileContent() != null) {
                             try {
                                 // Read content from stream (Java 8 compatible)
                                 ByteArrayOutputStream buffer = new ByteArrayOutputStream();
@@ -125,6 +113,7 @@ public class MsgReaderBean implements Serializable {
                 // Optional: print email info in console
                 System.out.println("Subject: " + emailData.getSubject());
                 System.out.println("Body: " + emailData.getBody());
+                System.out.println("From email: " + emailData.getSender());
                 if (emailData.getToList() != null) {
                     System.out.println("To:");
                     emailData.getToList().forEach(t -> System.out.println(" - " + t));
@@ -135,7 +124,7 @@ public class MsgReaderBean implements Serializable {
                 }
 
                 System.out.println("MSG file processed successfully!");
-                System.out.println("The Object is : "+ emailData.toString());
+                System.out.println("The Object is : " + emailData.toString());
 
             } catch (IOException e) {
                 e.printStackTrace();
@@ -144,10 +133,41 @@ public class MsgReaderBean implements Serializable {
             System.out.println("No file uploaded!");
         }
     }
-    
-    
-    public void print(){
-        System.out.println("The Object is : "+ emailData.toString());
+
+    private List<String> extractEmailsFromHeader(String headers, String headerName, Pattern emailPattern) {
+        String[] lines = headers.split("\r\n|\r|\n");
+        StringBuilder headerBuilder = new StringBuilder();
+        boolean inTargetHeader = false;
+
+        for (String line : lines) {
+            if (line.toLowerCase().startsWith(headerName.toLowerCase() + ":")) {
+                inTargetHeader = true;
+                headerBuilder.append(line);
+            } else if (inTargetHeader) {
+                if (line.matches("^[A-Za-z-]+:.*")) {
+                    // another header started → stop
+                    break;
+                }
+                if (line.startsWith(" ") || line.startsWith("\t")) {
+                    headerBuilder.append(" ").append(line.trim());
+                }
+            }
+        }
+
+        String headerValue = headerBuilder.toString()
+                .replaceFirst("(?i)^" + headerName + ":", "")
+                .trim();
+
+        List<String> result = new ArrayList<>();
+        Matcher matcher = emailPattern.matcher(headerValue);
+        while (matcher.find()) {
+            result.add(matcher.group());
+        }
+        return result;
+    }
+
+    public void print() {
+        System.out.println("The Object is : " + emailData.toString());
     }
 
     public void setUploadedFile(UploadedFile uploadedFile) {
@@ -160,6 +180,14 @@ public class MsgReaderBean implements Serializable {
 
     public UploadedFile getUploadedFile() {
         return uploadedFile;
+    }
+
+    public List<EmailData> getList() {
+        return list;
+    }
+
+    public void setList(List<EmailData> list) {
+        this.list = list;
     }
 
 }
