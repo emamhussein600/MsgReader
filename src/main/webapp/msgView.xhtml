@@ -1,29 +1,93 @@
 <html xmlns="http://www.w3.org/1999/xhtml"
       xmlns:h="http://xmlns.jcp.org/jsf/html"
-      xmlns:p="http://primefaces.org/ui">
-    <h:head>
-        <title>MSG Viewer</title>
-    </h:head>
-    <h:body>
-        <h:form prependId="false" enctype="multipart/form-data">
+      xmlns:p="http://primefaces.org/ui"
+      xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+      xmlns:f="http://xmlns.jcp.org/jsf/core">
 
-            <p:panel header="Upload MSG File">
-                <p:fileUpload value="#{msgReaderBean.uploadedFile}"
-                              mode="simple"
-                              virusScan="true"
-                              label="Select MSG File"
-                              sizeLimit="10485760" />
+<h:head>
+    <title>MSG Viewer</title>
+</h:head>
 
-                <p:commandButton value="Process MSG"
-                                 action="#{msgReaderBean.print()}"
-                                 update="@form"/>
-            </p:panel>
-            
-            <p:dataTable id="attachs" widgetVar="Attachs" value="#{msgReaderBean.list}" var="att">
-                <p:column id="name">
-                    <h:outputText value="#{att.attachments}"/>
-                </p:column>
-            </p:dataTable>
-        </h:form>
-    </h:body>
+<h:body>
+    <h:form prependId="false" enctype="multipart/form-data">
+
+        <!-- Upload Section -->
+        <p:card style="margin-bottom: 20px;">
+            <f:facet name="title">
+                 Upload MSG File
+            </f:facet>
+            <p:fileUpload 
+                value="#{msgReaderBean.uploadedFile}"
+                mode="simple"
+                label="Choose MSG File"
+                sizeLimit="10485760"
+                style="margin-bottom:10px;" />
+
+            <p:commandButton 
+                value="Process MSG" 
+                icon="pi pi-search" 
+                styleClass="p-button-success"
+                action="#{msgReaderBean.print()}" 
+                update="@form" />
+        </p:card>
+
+        <!-- Email List Table -->
+        <p:dataTable 
+            id="emails" 
+            value="#{msgReaderBean.list}" 
+            var="email"
+            style="width:100%"
+            stripedRows="true" 
+            rowHover="true" 
+            reflow="true"
+            rowKey="#{email.sender}">
+
+            <p:column headerText="From">
+                <h:outputText value="#{email.sender}" />
+            </p:column>
+
+            <p:column headerText="To">
+                <ui:repeat value="#{email.toList}" var="to">
+                    <h:outputText value="#{to}" /><br/>
+                </ui:repeat>
+            </p:column>
+
+            <p:column headerText="Cc">
+                <ui:repeat value="#{email.ccList}" var="ccx">
+                    <h:outputText value="#{ccx}" /><br/>
+                </ui:repeat>
+            </p:column>
+
+            <p:column headerText="Subject">
+                <h:outputText value="#{email.subject}" />
+            </p:column>
+
+            <p:column headerText="Body">
+                <h:outputText value="#{email.body}" escape="false" />
+            </p:column>
+
+            <p:column headerText="Attachments">
+                <ui:repeat value="#{email.attachments}" var="att">
+                    <p:commandLink ajax="false" style="display:block; margin-bottom:5px;">
+                        <i class="pi pi-paperclip" style="margin-right:5px;"></i>
+                        #{att.fileName}
+                        <p:fileDownload value="#{msgReaderBean.downloadAttachment(att)}" />
+                    </p:commandLink>
+                </ui:repeat>
+            </p:column>
+
+            <p:column headerText="Action" style="text-align:center;">
+                <p:commandButton 
+                    id="createBtn" 
+                    value="Create" 
+                    icon="pi pi-plus"
+                    styleClass="p-button-rounded p-button-info"
+                    title="Create Correspondence from this email"
+                    update="@form"/>
+            </p:column>
+
+        </p:dataTable>
+
+    </h:form>
+</h:body>
 </html>

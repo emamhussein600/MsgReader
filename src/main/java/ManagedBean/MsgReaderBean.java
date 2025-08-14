@@ -24,6 +24,8 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.primefaces.model.DefaultStreamedContent;
+import org.primefaces.model.StreamedContent;
 
 /**
  *
@@ -57,7 +59,7 @@ public class MsgReaderBean implements Serializable {
                 emailData.setToList(extractEmailsFromHeader(msg.getHeaders(), "to", emailPattern));
                 emailData.setCcList(extractEmailsFromHeader(msg.getHeaders(), "cc", emailPattern));
                 // Save attachments to Desktop
-                String desktopPath = System.getProperty("user.home") + "/Desktop/";
+               // String desktopPath = System.getProperty("user.home") + "/Desktop/";
 
                 //for set Attach List
                 List<AttachmentData> attachmentList = msg.getAttachments().stream()
@@ -65,11 +67,11 @@ public class MsgReaderBean implements Serializable {
                             if (att instanceof FileAttachment) {
                                 FileAttachment fa = (FileAttachment) att;
                                 try {
-                                    String filePath = desktopPath + fa.getLongFilename();
-                                    Files.write(Paths.get(filePath), fa.getData());
+                                    //String filePath = desktopPath + fa.getLongFilename();
+//                                    Files.write(Paths.get(filePath), fa.getData());
                                     //System.out.println("Saved attachment: " + filePath);
                                     return new AttachmentData(fa.getLongFilename(), new ByteArrayInputStream(fa.getData()));
-                                } catch (IOException e) {
+                                } catch (Exception e) {
                                     e.printStackTrace();
                                     return new AttachmentData(fa.getLongFilename(), null);
                                 }
@@ -109,7 +111,6 @@ public class MsgReaderBean implements Serializable {
 //                        }
 //                    }
 //                }
-
 //                // Optional: print email info in console
 //                System.out.println("Subject: " + emailData.getSubject());
 //                System.out.println("Body: " + emailData.getBody());
@@ -122,7 +123,6 @@ public class MsgReaderBean implements Serializable {
 //                    System.out.println("Cc:");
 //                    emailData.getCcList().forEach(c -> System.out.println(" - " + c));
 //                }
-
                 System.out.println("MSG file processed successfully!");
 
             } catch (IOException e) {
@@ -168,7 +168,23 @@ public class MsgReaderBean implements Serializable {
     }
 
     public void print() {
-        System.out.println("The object is From Print method : "+msgReadFrom());
+        EmailData processed = msgReadFrom();
+        if (processed != null) {
+            if (list == null) {
+                list = new ArrayList<>();
+            }
+            list.add(processed); // Add new email data to the list
+        }
+        System.out.println("The object is From Print method : " + processed);
+    }
+    // inside your ManagedBean
+
+    public StreamedContent downloadAttachment(AttachmentData attachment) {
+        return DefaultStreamedContent.builder()
+                .name(attachment.getFileName())
+                .contentType("application/octet-stream")
+                .stream(() -> attachment.getFileContent())
+                .build();
     }
 
     public void setUploadedFile(UploadedFile uploadedFile) {
