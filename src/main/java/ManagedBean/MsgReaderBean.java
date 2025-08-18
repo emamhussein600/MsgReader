@@ -13,7 +13,6 @@ import com.auxilii.msgparser.attachment.FileAttachment;
 import com.bass.cms.util.AttachmentData;
 import com.bass.cms.util.EmailData;
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import org.primefaces.model.file.UploadedFile;
 import java.io.IOException;
 import java.io.InputStream;
@@ -23,11 +22,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.annotation.PostConstruct;
-import javax.enterprise.context.SessionScoped;
 import javax.faces.application.FacesMessage;
+import javax.faces.component.UIComponent;
 import javax.faces.context.FacesContext;
+import javax.faces.validator.ValidatorException;
 import org.primefaces.event.FileUploadEvent;
-import org.primefaces.event.RowEditEvent;
 import org.primefaces.model.DefaultStreamedContent;
 import org.primefaces.model.StreamedContent;
 
@@ -46,8 +45,6 @@ public class MsgReaderBean implements Serializable {
     private UploadedFile uploadedFile;
     private boolean fileSelected;
     private EmailData selectedEmail;
-    private EmailData originalEmail;
-    private UploadedFile newAttachment;
     private List<EmailData> list;
 
     @PostConstruct
@@ -62,10 +59,8 @@ public class MsgReaderBean implements Serializable {
             try {
                 byte[] fileBytes = uploadedFile.getContent(); // get the file content
                 Message msg = new MsgParser().parseMsg(new ByteArrayInputStream(fileBytes));
-
                 Pattern emailPattern = Pattern.compile("[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}");
                 emailData = new EmailData();
-
                 // Subject & Body
                 emailData.setSubject(msg.getSubject());
                 emailData.setSender(msg.getFromEmail());
@@ -92,49 +87,6 @@ public class MsgReaderBean implements Serializable {
                             }
                         }).collect(Collectors.toList());
                 emailData.setAttachments(attachmentList);
-
-//                // Print attachments
-//                if (emailData.getAttachments() != null) {
-//                    System.out.println("Attachments:");
-//                    for (AttachmentData attData : emailData.getAttachments()) {
-//                        System.out.println("Filename: " + attData.getFileName());
-//
-//                        if (attData.getFileContent() != null) {
-//                            try {
-//                                // Read content from stream (Java 8 compatible)
-//                                ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-//                                byte[] data = new byte[1024];
-//                                int nRead;
-//                                while ((nRead = attData.getFileContent().read(data, 0, data.length)) != -1) {
-//                                    buffer.write(data, 0, nRead);
-//                                }
-//                                buffer.flush();
-//                                byte[] contentBytes = buffer.toByteArray();
-//                                System.out.println("Content length: " + contentBytes.length + " bytes");
-//
-//                                // Optional: recreate InputStream if you want to reuse it
-//                                attData.setFileContent(new ByteArrayInputStream(contentBytes));
-//
-//                            } catch (IOException e) {
-//                                e.printStackTrace();
-//                            }
-//                        } else {
-//                            System.out.println("No content available.");
-//                        }
-//                    }
-//                }
-//                // Optional: print email info in console
-//                System.out.println("Subject: " + emailData.getSubject());
-//                System.out.println("Body: " + emailData.getBody());
-//                System.out.println("From email: " + emailData.getSender());
-//                if (emailData.getToList() != null) {
-//                    System.out.println("To:");
-//                    emailData.getToList().forEach(t -> System.out.println(" - " + t));
-//                }
-//                if (emailData.getCcList() != null) {
-//                    System.out.println("Cc:");
-//                    emailData.getCcList().forEach(c -> System.out.println(" - " + c));
-//                }
                 System.out.println("MSG file processed successfully!");
 
             } catch (IOException e) {
@@ -166,7 +118,6 @@ public class MsgReaderBean implements Serializable {
                 }
             }
         }
-
         String headerValue = headerBuilder.toString()
                 .replaceFirst("(?i)^" + headerName + ":", "")
                 .trim();
@@ -190,7 +141,6 @@ public class MsgReaderBean implements Serializable {
         }
         System.out.println("The object is From Print method : " + processed);
     }
-    // inside your ManagedBean
 
     public StreamedContent downloadAttachment(AttachmentData attachment) {
         return DefaultStreamedContent.builder()
@@ -200,120 +150,11 @@ public class MsgReaderBean implements Serializable {
                 .build();
     }
 
-    public void setUploadedFile(UploadedFile uploadedFile) {
-        this.uploadedFile = uploadedFile;
-        this.fileSelected = (uploadedFile != null);
-    }
-
-    public EmailData getEmailData() {
-        return emailData;
-    }
-
-    public UploadedFile getUploadedFile() {
-        return uploadedFile;
-    }
-
-    public List<EmailData> getList() {
-        return list;
-    }
-
-    public void setList(List<EmailData> list) {
-        this.list = list;
-    }
-
-    public boolean isFileSelected() {
-        return fileSelected;
-    }
-
-    public EmailData getSelectedEmail() {
-        return selectedEmail;
-    }
-
-    public void setSelectedEmail(EmailData selectedEmail) {
-        this.selectedEmail = selectedEmail;
-    }
-
-    public void removeAttachment(AttachmentData att) {
-        if (selectedEmail != null && selectedEmail.getAttachments() != null) {
-            selectedEmail.getAttachments().remove(att);
-        }
-    }
-
-    public void addAttachment() {
-        if (newAttachment == null || selectedEmail == null) {
-            return;
-        }
-
-        try {
-            // Read stream into byte[] immediately
-            byte[] fileBytes = inputStreamToByteArray(newAttachment.getInputStream());
-
-            AttachmentData attach = new AttachmentData();
-            attach.setId(java.util.UUID.randomUUID().toString());
-            attach.setFileName(newAttachment.getFileName());
-            attach.setContent(fileBytes); // ← store bytes
-
-            if (selectedEmail.getAttachments() == null) {
-                selectedEmail.setAttachments(new ArrayList<>());
-            }
-            selectedEmail.getAttachments().add(attach);
-
-            FacesContext.getCurrentInstance().addMessage(null,
-                    new FacesMessage("Attachment added: " + newAttachment.getFileName()));
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            FacesContext.getCurrentInstance().addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Error", "Failed to add attachment"));
-        } finally {
-            newAttachment = null; // Clear uploaded file
-        }
-    }
-
-    // Add this helper method to MsgReaderBean
-    private byte[] inputStreamToByteArray(InputStream is) throws Exception {
-        java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
-        byte[] data = new byte[8192];
-        int nRead;
-        while ((nRead = is.read(data, 0, data.length)) != -1) {
-            buffer.write(data, 0, nRead);
-        }
-        buffer.close();
-        return buffer.toByteArray();
-    }
-
     public void prepareEdit(EmailData email) {
         if (email != null) {
             // store original
             this.selectedEmail = email;    // clone for editing
             System.out.println("=== PREPARE EDIT: cloned email with ID " + selectedEmail.getId());
-        }
-    }
-
-    public void handleFileUpload(FileUploadEvent event) {
-        UploadedFile uploadedFile = event.getFile();
-        if (selectedEmail == null) {
-            FacesContext.getCurrentInstance().addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Error", "No email selected."));
-            return;
-        }
-
-        try {
-            byte[] fileBytes = inputStreamToByteArray(uploadedFile.getInputStream());
-            AttachmentData att = new AttachmentData(uploadedFile.getFileName(), fileBytes);
-
-            if (selectedEmail.getAttachments() == null) {
-                selectedEmail.setAttachments(new ArrayList<>());
-            }
-            selectedEmail.getAttachments().add(att);
-
-            FacesContext.getCurrentInstance().addMessage(null,
-                    new FacesMessage("Added: " + uploadedFile.getFileName()));
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            FacesContext.getCurrentInstance().addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Upload failed", e.getMessage()));
         }
     }
 
@@ -349,24 +190,99 @@ public class MsgReaderBean implements Serializable {
         selectedEmail = null;
     }
 
-    public EmailData getOriginalEmail() {
-        return originalEmail;
+    public void removeAttachment(AttachmentData att) {
+        if (selectedEmail != null && selectedEmail.getAttachments() != null) {
+            selectedEmail.getAttachments().remove(att);
+        }
     }
 
-    public void setOriginalEmail(EmailData originalEmail) {
-        this.originalEmail = originalEmail;
+    public void handleFileUpload(FileUploadEvent event) {
+        UploadedFile uploadedFile = event.getFile();
+        if (selectedEmail == null) {
+            FacesContext.getCurrentInstance().addMessage(null,
+                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Error", "No email selected."));
+            return;
+        }
+
+        try {
+            byte[] fileBytes = inputStreamToByteArray(uploadedFile.getInputStream());
+            AttachmentData att = new AttachmentData(uploadedFile.getFileName(), fileBytes);
+
+            if (selectedEmail.getAttachments() == null) {
+                selectedEmail.setAttachments(new ArrayList<>());
+            }
+            selectedEmail.getAttachments().add(att);
+
+            FacesContext.getCurrentInstance().addMessage(null,
+                    new FacesMessage("Added: " + uploadedFile.getFileName()));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            FacesContext.getCurrentInstance().addMessage(null,
+                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Upload failed", e.getMessage()));
+        }
+    }
+
+    // Add this helper method to MsgReaderBean
+    private byte[] inputStreamToByteArray(InputStream is) throws Exception {
+        java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
+        byte[] data = new byte[8192];
+        int nRead;
+        while ((nRead = is.read(data, 0, data.length)) != -1) {
+            buffer.write(data, 0, nRead);
+        }
+        buffer.close();
+        return buffer.toByteArray();
+    }
+
+    public void validateEmailList(FacesContext context, UIComponent component, Object value) throws ValidatorException {
+        String emails = (String) value;
+        if (emails != null && !emails.isEmpty()) {
+            String[] list = emails.split(",");
+            String regex = "^[\\w.%+-]+@[\\w.-]+\\.[a-zA-Z]{2,}$";
+            for (String email : list) {
+                if (!email.trim().matches(regex)) {
+                    throw new ValidatorException(new FacesMessage(FacesMessage.SEVERITY_ERROR,
+                            "Invalid email format: " + email.trim(),
+                            "Each email must be valid"));
+                }
+            }
+        }
     }
 
     public void cancelEdit() {
         selectedEmail = new EmailData();
     }
 
-    public UploadedFile getNewAttachment() {
-        return newAttachment;
+    public void setUploadedFile(UploadedFile uploadedFile) {
+        this.uploadedFile = uploadedFile;
     }
 
-    public void setNewAttachment(UploadedFile newAttachment) {
-        this.newAttachment = newAttachment;
+    public EmailData getEmailData() {
+        return emailData;
     }
 
+    public UploadedFile getUploadedFile() {
+        return uploadedFile;
+    }
+
+    public List<EmailData> getList() {
+        return list;
+    }
+
+    public void setList(List<EmailData> list) {
+        this.list = list;
+    }
+
+    public boolean isFileSelected() {
+        return fileSelected;
+    }
+
+    public EmailData getSelectedEmail() {
+        return selectedEmail;
+    }
+
+    public void setSelectedEmail(EmailData selectedEmail) {
+        this.selectedEmail = selectedEmail;
+    }
 }

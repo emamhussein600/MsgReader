@@ -33,48 +33,62 @@
                     update="@form" />
             </p:card>
 
-            <!-- Email List Table -->
             <p:dataTable 
                 id="emailsTable"
                 value="#{msgReaderBean.list}" 
                 var="email"
-                style="width:100%"
+                style="width:100%;" 
+                tableStyle="table-layout:fixed;" 
                 stripedRows="true" 
                 rowHover="true" 
-                reflow="true"
+                scrollable="true" scrollWidth="100%"
                 selectionMode="single"
                 selection="#{msgReaderBean.selectedEmail}" 
                 rowKey="#{email.id}"
-                rowIndexVar="index">
+                rowIndexVar="index"
+                paginator="true" rows="10">
 
-                <p:column headerText="Index">
+                <!-- Row Number -->
+                <p:column headerText="#" style="width:40px; text-align:center;">
                     <h:outputText value="#{index+1}"/>
                 </p:column>
-                <p:column headerText="From">
+
+                <!-- From Column -->
+                <p:column headerText="From" style="width:150px; overflow:hidden;"
+                          filterBy="#{email.sender}" filterMatchMode="contains" sortable="true">
                     <h:outputText value="#{email.sender}" />
                 </p:column>
 
-                <p:column headerText="To">
+                <!-- To Column -->
+                <p:column headerText="To" style="width:200px; overflow:hidden;"
+                          filterBy="#{email.toListAsString}" filterMatchMode="contains" sortable="true">
                     <ui:repeat value="#{email.toList}" var="to">
                         <h:outputText value="#{to}" /><br/>
                     </ui:repeat>
                 </p:column>
 
-                <p:column headerText="Cc">
+                <!-- Cc Column -->
+                <p:column headerText="Cc" style="width:200px; overflow:hidden;"
+                          filterBy="#{email.ccListAsString}" filterMatchMode="contains" sortable="true">
                     <ui:repeat value="#{email.ccList}" var="ccx">
                         <h:outputText value="#{ccx}" /><br/>
                     </ui:repeat>
                 </p:column>
 
-                <p:column headerText="Subject">
+                <!-- Subject Column -->
+                <p:column headerText="Subject" style="width:200px; overflow:hidden;"
+                          filterBy="#{email.subject}" filterMatchMode="contains" sortable="true">
                     <h:outputText value="#{email.subject}" />
                 </p:column>
 
-                <p:column headerText="Body">
+                <!-- Body Column -->
+                <p:column headerText="Body" style="width:200px; overflow:hidden;"
+                          filterBy="#{email.body}" filterMatchMode="contains" sortable="true">
                     <h:outputText value="#{email.body}" escape="false" />
                 </p:column>
 
-                <p:column headerText="Attachments">
+                <!-- Attachments Column -->
+                <p:column headerText="Attachments" style="width:150px; overflow:hidden;">
                     <ui:repeat value="#{email.attachments}" var="att">
                         <p:commandLink ajax="false" style="display:block; margin-bottom:5px;">
                             <i class="pi pi-paperclip" style="margin-right:5px;"></i>
@@ -84,22 +98,33 @@
                     </ui:repeat>
                 </p:column>
 
-                <p:column headerText="Action" style="text-align:center;">
+                <!-- Create Button -->
+                <p:column headerText="" style="width:80px; text-align:center;">
                     <p:commandButton 
                         id="createBtn" 
-                        value="Create" 
-                        icon="pi pi-plus"
-                        styleClass="p-button-rounded p-button-info"
-                        title="Create Correspondence from this email"
-                        update="@form"/>
+                        value="" 
+                        icon="pi pi-plus" 
+                        styleClass="p-button-rounded p-button-success p-button-sm"
+                        title="Create Correspondence"
+                        update="@form" 
+                        style="transition: transform 0.2s;"
+                        onmouseover="this.style.transform = 'scale(1.2)';"
+                        onmouseout="this.style.transform = 'scale(1)';"/>
                 </p:column>
-                <p:column headerText="Action" style="text-align:center;">
+
+                <!-- Edit Button -->
+                <p:column headerText="" style="width:80px; text-align:center;">
                     <p:commandButton 
-                        value="Edit" 
-                        icon="pi pi-pencil"
+                        value="" 
+                        icon="pi pi-pencil" 
+                        styleClass="p-button-rounded p-button-info p-button-sm"
                         update=":mainForm:editEmailDialog"
                         oncomplete="PF('emailDialog').show()"
-                        actionListener="#{msgReaderBean.prepareEdit(email)}" />
+                        actionListener="#{msgReaderBean.prepareEdit(email)}"
+                        title="Edit Correspondence"
+                        style="transition: transform 0.2s;"
+                        onmouseover="this.style.transform = 'scale(1.2)';"
+                        onmouseout="this.style.transform = 'scale(1)';"/>
                 </p:column>
             </p:dataTable>
             <p:dialog id="editEmailDialog" 
@@ -124,17 +149,20 @@
                         <div class="fadeField field-group">
                             <label for="dlgFrom">From:</label>
                             <p:inputText id="dlgFrom" value="#{msgReaderBean.selectedEmail.sender}" 
+                                         validator="#{msgReaderBean.validateEmailList}" 
                                          styleClass="full-width"/>
                         </div>
                         <div class="fadeField field-group">
                             <label for="dlgTo">To:</label>
                             <p:inputTextarea id="dlgTo" value="#{msgReaderBean.selectedEmail.toListAsString}" 
-                                             rows="3" styleClass="full-width"/>
+                                             rows="3" styleClass="full-width"
+                                             validator="#{msgReaderBean.validateEmailList}"/>
                         </div>
                         <div class="fadeField field-group">
                             <label for="dlgCc">Cc:</label>
                             <p:inputTextarea id="dlgCc" value="#{msgReaderBean.selectedEmail.ccListAsString}" 
-                                             rows="3" styleClass="full-width"/>
+                                             rows="3" styleClass="full-width"
+                                             validator="#{msgReaderBean.validateEmailList}"/>
                         </div>
                         <div class="fadeField field-group">
                             <label for="dlgBody">Body:</label>
