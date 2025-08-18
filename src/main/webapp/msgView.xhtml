@@ -1,93 +1,271 @@
-<html xmlns="http://www.w3.org/1999/xhtml"
-      xmlns:h="http://xmlns.jcp.org/jsf/html"
-      xmlns:p="http://primefaces.org/ui"
-      xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
-      xmlns:f="http://xmlns.jcp.org/jsf/core">
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:h="http://java.sun.com/jsf/html"
+                xmlns:f="http://java.sun.com/jsf/core"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:p="http://primefaces.org/ui"
+                template="/WEB-INF/template.xhtml">
+    <ui:define name="title">Import Correspondence Email</ui:define>
+    <ui:define name="breadcrumb">
+        <li>
+            <p:link outcome="/importCorrespondenceEmail">#{guestPreferences.translate('ImportCorrespondencePage')}</p:link>
+        </li>
+    </ui:define>
+    <ui:define name="content">
+        <h:form id="mainForm" prependId="false" enctype="multipart/form-data">
+            <p:growl id="msgs" life="3000" showDetail="true"/>
+            <!-- Upload Section -->
+            <p:card style="margin-bottom: 20px;">
+                <f:facet name="title">
+                    Upload MSG File
+                </f:facet>
+                <p:fileUpload 
+                    value="#{msgReaderBean.uploadedFile}"
+                    mode="simple"
+                    label="Choose MSG File"
+                    sizeLimit="10485760"
+                    style="margin-bottom:10px;" />
 
-<h:head>
-    <title>MSG Viewer</title>
-</h:head>
-
-<h:body>
-    <h:form prependId="false" enctype="multipart/form-data">
-
-        <!-- Upload Section -->
-        <p:card style="margin-bottom: 20px;">
-            <f:facet name="title">
-                 Upload MSG File
-            </f:facet>
-            <p:fileUpload 
-                value="#{msgReaderBean.uploadedFile}"
-                mode="simple"
-                label="Choose MSG File"
-                sizeLimit="10485760"
-                style="margin-bottom:10px;" />
-
-            <p:commandButton 
-                value="Process MSG" 
-                icon="pi pi-search" 
-                styleClass="p-button-success"
-                action="#{msgReaderBean.print()}" 
-                update="@form" />
-        </p:card>
-
-        <!-- Email List Table -->
-        <p:dataTable 
-            id="emails" 
-            value="#{msgReaderBean.list}" 
-            var="email"
-            style="width:100%"
-            stripedRows="true" 
-            rowHover="true" 
-            reflow="true"
-            rowKey="#{email.sender}">
-
-            <p:column headerText="From">
-                <h:outputText value="#{email.sender}" />
-            </p:column>
-
-            <p:column headerText="To">
-                <ui:repeat value="#{email.toList}" var="to">
-                    <h:outputText value="#{to}" /><br/>
-                </ui:repeat>
-            </p:column>
-
-            <p:column headerText="Cc">
-                <ui:repeat value="#{email.ccList}" var="ccx">
-                    <h:outputText value="#{ccx}" /><br/>
-                </ui:repeat>
-            </p:column>
-
-            <p:column headerText="Subject">
-                <h:outputText value="#{email.subject}" />
-            </p:column>
-
-            <p:column headerText="Body">
-                <h:outputText value="#{email.body}" escape="false" />
-            </p:column>
-
-            <p:column headerText="Attachments">
-                <ui:repeat value="#{email.attachments}" var="att">
-                    <p:commandLink ajax="false" style="display:block; margin-bottom:5px;">
-                        <i class="pi pi-paperclip" style="margin-right:5px;"></i>
-                        #{att.fileName}
-                        <p:fileDownload value="#{msgReaderBean.downloadAttachment(att)}" />
-                    </p:commandLink>
-                </ui:repeat>
-            </p:column>
-
-            <p:column headerText="Action" style="text-align:center;">
                 <p:commandButton 
-                    id="createBtn" 
-                    value="Create" 
-                    icon="pi pi-plus"
-                    styleClass="p-button-rounded p-button-info"
-                    title="Create Correspondence from this email"
-                    update="@form"/>
-            </p:column>
+                    value="Process MSG" 
+                    icon="pi pi-search" 
+                    styleClass="p-button-success"
+                    action="#{msgReaderBean.print()}" 
+                    update="@form" />
+            </p:card>
 
-        </p:dataTable>
+            <!-- Email List Table -->
+            <p:dataTable 
+                id="emailsTable"
+                value="#{msgReaderBean.list}" 
+                var="email"
+                style="width:100%"
+                stripedRows="true" 
+                rowHover="true" 
+                reflow="true"
+                selectionMode="single"
+                selection="#{msgReaderBean.selectedEmail}" 
+                rowKey="#{email.id}"
+                rowIndexVar="index">
 
-    </h:form>
-</h:body>
-</html>
+                <p:column headerText="Index">
+                    <h:outputText value="#{index+1}"/>
+                </p:column>
+                <p:column headerText="From">
+                    <h:outputText value="#{email.sender}" />
+                </p:column>
+
+                <p:column headerText="To">
+                    <ui:repeat value="#{email.toList}" var="to">
+                        <h:outputText value="#{to}" /><br/>
+                    </ui:repeat>
+                </p:column>
+
+                <p:column headerText="Cc">
+                    <ui:repeat value="#{email.ccList}" var="ccx">
+                        <h:outputText value="#{ccx}" /><br/>
+                    </ui:repeat>
+                </p:column>
+
+                <p:column headerText="Subject">
+                    <h:outputText value="#{email.subject}" />
+                </p:column>
+
+                <p:column headerText="Body">
+                    <h:outputText value="#{email.body}" escape="false" />
+                </p:column>
+
+                <p:column headerText="Attachments">
+                    <ui:repeat value="#{email.attachments}" var="att">
+                        <p:commandLink ajax="false" style="display:block; margin-bottom:5px;">
+                            <i class="pi pi-paperclip" style="margin-right:5px;"></i>
+                            #{att.fileName}
+                            <p:fileDownload value="#{msgReaderBean.downloadAttachment(att)}" />
+                        </p:commandLink>
+                    </ui:repeat>
+                </p:column>
+
+                <p:column headerText="Action" style="text-align:center;">
+                    <p:commandButton 
+                        id="createBtn" 
+                        value="Create" 
+                        icon="pi pi-plus"
+                        styleClass="p-button-rounded p-button-info"
+                        title="Create Correspondence from this email"
+                        update="@form"/>
+                </p:column>
+                <p:column headerText="Action" style="text-align:center;">
+                    <p:commandButton 
+                        value="Edit" 
+                        icon="pi pi-pencil"
+                        update=":mainForm:editEmailDialog"
+                        oncomplete="PF('emailDialog').show()"
+                        actionListener="#{msgReaderBean.prepareEdit(email)}" />
+                </p:column>
+            </p:dataTable>
+            <p:dialog id="editEmailDialog" 
+                      header="Edit Email" 
+                      widgetVar="emailDialog"
+                      modal="true" 
+                      closable="true" 
+                      resizable="false"
+                      showEffect="fade" hideEffect="fade"
+                      styleClass="responsive-dialog"
+                      style="max-height: 70vh; overflow-y: auto; width: 600px;">
+
+                <h:form id="editForm">
+                    <p:outputPanel rendered="#{msgReaderBean.selectedEmail != null}" layout="block" styleClass="dialog-content">
+
+                        <!-- Email Fields -->
+                        <div class="fadeField field-group">
+                            <label for="dlgSubject">Subject:</label>
+                            <p:inputText id="dlgSubject" value="#{msgReaderBean.selectedEmail.subject}" 
+                                         required="true" styleClass="full-width"/>
+                        </div>
+                        <div class="fadeField field-group">
+                            <label for="dlgFrom">From:</label>
+                            <p:inputText id="dlgFrom" value="#{msgReaderBean.selectedEmail.sender}" 
+                                         styleClass="full-width"/>
+                        </div>
+                        <div class="fadeField field-group">
+                            <label for="dlgTo">To:</label>
+                            <p:inputTextarea id="dlgTo" value="#{msgReaderBean.selectedEmail.toListAsString}" 
+                                             rows="3" styleClass="full-width"/>
+                        </div>
+                        <div class="fadeField field-group">
+                            <label for="dlgCc">Cc:</label>
+                            <p:inputTextarea id="dlgCc" value="#{msgReaderBean.selectedEmail.ccListAsString}" 
+                                             rows="3" styleClass="full-width"/>
+                        </div>
+                        <div class="fadeField field-group">
+                            <label for="dlgBody">Body:</label>
+                            <p:inputTextarea id="dlgBody" value="#{msgReaderBean.selectedEmail.body}" 
+                                             rows="5" styleClass="full-width"/>
+                        </div>
+
+                        <!-- Attachments Panel -->
+                        <p:outputPanel id="attachmentsPanel">
+                            <ui:repeat value="#{msgReaderBean.selectedEmail.attachments}" var="att">
+                                <div class="attachment-row">
+                                    <p:inputText value="#{att.fileName}" styleClass="attachment-name"/>
+                                    <p:commandButton value="Remove" icon="pi pi-times"
+                                                     actionListener="#{msgReaderBean.removeAttachment(att)}"
+                                                     update=":editForm:attachmentsPanel :mainForm:emailsTable"
+                                                     ajax="true"
+                                                     process="@this"
+                                                     styleClass="remove-btn"/>
+                                </div>
+                            </ui:repeat>
+                        </p:outputPanel>
+                        <!-- File Upload -->
+                        <p:fileUpload id="attachmentUpload"
+                                      mode="advanced"
+                                      auto="true"
+                                      listener="#{msgReaderBean.handleFileUpload}"
+                                      label="Add Attachment"
+                                      skinSimple="true"
+                                      styleClass="custom-fileupload"
+                                      update="attachmentsPanel" />
+                    </p:outputPanel>
+                    <!-- Footer Buttons -->
+                    <div class="dialog-footer">
+                        <p:commandButton value="Cancel"
+                                         onclick="PF('emailDialog').hide(); return false;"
+                                         process="@this"
+                                         styleClass="p-button-secondary"/>
+                        <p:commandButton value="Save"
+                                         action="#{msgReaderBean.saveEditedEmail}"
+                                         update=":mainForm:emailsTable :mainForm:msgs"
+                                         process="@form"
+                                         oncomplete="PF('emailDialog').hide()" 
+                                         styleClass="p-button-primary"/>
+                    </div>
+                </h:form>
+                <h:outputStylesheet>
+                    .dialog-footer {
+                    display: flex;
+                    justify-content: flex-end;
+                    gap: 0.5rem;
+                    margin-top: 1rem;
+                    position: sticky;
+                    bottom: 0;
+                    background: #fff;
+                    padding-top: 0.5rem;
+                    }
+                    .fadeField {
+                    opacity: 0;
+                    transform: translateY(10px);
+                    animation: fadeInUp 0.5s forwards;
+                    margin-bottom: 1rem;
+                    }
+                    @keyframes fadeInUp {
+                    to {
+                    opacity: 1;
+                    transform: translateY(0);
+                    }
+                    }
+
+                    .dialog-content {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 1rem;
+                    }
+
+                    .field-group label {
+                    display: block;
+                    font-weight: bold;
+                    margin-bottom: 0.25rem;
+                    }
+
+                    .full-width {
+                    width: 100%;
+                    }
+
+                    .attachment-row {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    margin-bottom: 0.25rem;
+                    flex-wrap: wrap;
+                    }
+
+                    .attachment-name {
+                    flex: 1 1 60%;
+                    }
+
+                    .remove-btn {
+                    flex: 0 0 auto;
+                    }
+
+                    .dialog-footer {
+                    display: flex;
+                    justify-content: flex-end;
+                    gap: 0.5rem;
+                    margin-top: 1rem;
+                    }
+
+                    /* Responsive for smaller screens */
+                    @media (max-width: 600px) {
+                    .attachment-row {
+                    flex-direction: column;
+                    align-items: stretch;
+                    }
+                    .remove-btn {
+                    align-self: flex-start;
+                    }
+                    }
+                </h:outputStylesheet>
+                <h:outputScript>
+                    function resetUploadWidget() {
+                    var input = document.getElementById('editEmailDialogForm:attachmentUpload_input');
+                    if (input) {
+                    input.value = '';
+                    }
+                    }
+                </h:outputScript>
+            </p:dialog>
+
+        </h:form>
+        <!-- CSS for fade-in effect -->
+    </ui:define>
+
+</ui:composition>

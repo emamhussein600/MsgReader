@@ -4,26 +4,30 @@
  */
 package ManagedBean;
 
-import Dto.AttachmentData;
-import Dto.EmailData;
 import javax.inject.Named;
 import javax.faces.view.ViewScoped;
 import java.io.Serializable;
 import com.auxilii.msgparser.MsgParser;
 import com.auxilii.msgparser.Message;
 import com.auxilii.msgparser.attachment.FileAttachment;
+import com.bass.cms.util.AttachmentData;
+import com.bass.cms.util.EmailData;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import org.primefaces.model.file.UploadedFile;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import javax.annotation.PostConstruct;
+import javax.enterprise.context.SessionScoped;
+import javax.faces.application.FacesMessage;
+import javax.faces.context.FacesContext;
+import org.primefaces.event.FileUploadEvent;
+import org.primefaces.event.RowEditEvent;
 import org.primefaces.model.DefaultStreamedContent;
 import org.primefaces.model.StreamedContent;
 
@@ -40,8 +44,18 @@ public class MsgReaderBean implements Serializable {
      */
     private EmailData emailData;
     private UploadedFile uploadedFile;
-
+    private boolean fileSelected;
+    private EmailData selectedEmail;
+    private EmailData originalEmail;
+    private UploadedFile newAttachment;
     private List<EmailData> list;
+
+    @PostConstruct
+    public void init() {
+        if (this.list == null) {
+            this.list = new ArrayList<>();
+        }
+    }
 
     public EmailData msgReadFrom() {
         if (uploadedFile != null) {
@@ -59,7 +73,7 @@ public class MsgReaderBean implements Serializable {
                 emailData.setToList(extractEmailsFromHeader(msg.getHeaders(), "to", emailPattern));
                 emailData.setCcList(extractEmailsFromHeader(msg.getHeaders(), "cc", emailPattern));
                 // Save attachments to Desktop
-               // String desktopPath = System.getProperty("user.home") + "/Desktop/";
+                // String desktopPath = System.getProperty("user.home") + "/Desktop/";
 
                 //for set Attach List
                 List<AttachmentData> attachmentList = msg.getAttachments().stream()
@@ -67,16 +81,14 @@ public class MsgReaderBean implements Serializable {
                             if (att instanceof FileAttachment) {
                                 FileAttachment fa = (FileAttachment) att;
                                 try {
-                                    //String filePath = desktopPath + fa.getLongFilename();
-//                                    Files.write(Paths.get(filePath), fa.getData());
-                                    //System.out.println("Saved attachment: " + filePath);
-                                    return new AttachmentData(fa.getLongFilename(), new ByteArrayInputStream(fa.getData()));
+                                    byte[] data = fa.getData(); // ← already a byte[]
+                                    return new AttachmentData(fa.getLongFilename(), data); // uses byte[] constructor
                                 } catch (Exception e) {
                                     e.printStackTrace();
-                                    return new AttachmentData(fa.getLongFilename(), null);
+                                    return new AttachmentData("error.dat", new byte[0]);
                                 }
                             } else {
-                                return new AttachmentData("[Non-file attachment]", null);
+                                return new AttachmentData("[Non-file attachment]", new byte[0]);
                             }
                         }).collect(Collectors.toList());
                 emailData.setAttachments(attachmentList);
@@ -170,6 +182,7 @@ public class MsgReaderBean implements Serializable {
     public void print() {
         EmailData processed = msgReadFrom();
         if (processed != null) {
+            processed.setId(java.util.UUID.randomUUID().toString());
             if (list == null) {
                 list = new ArrayList<>();
             }
@@ -189,6 +202,7 @@ public class MsgReaderBean implements Serializable {
 
     public void setUploadedFile(UploadedFile uploadedFile) {
         this.uploadedFile = uploadedFile;
+        this.fileSelected = (uploadedFile != null);
     }
 
     public EmailData getEmailData() {
@@ -205,6 +219,154 @@ public class MsgReaderBean implements Serializable {
 
     public void setList(List<EmailData> list) {
         this.list = list;
+    }
+
+    public boolean isFileSelected() {
+        return fileSelected;
+    }
+
+    public EmailData getSelectedEmail() {
+        return selectedEmail;
+    }
+
+    public void setSelectedEmail(EmailData selectedEmail) {
+        this.selectedEmail = selectedEmail;
+    }
+
+    public void removeAttachment(AttachmentData att) {
+        if (selectedEmail != null && selectedEmail.getAttachments() != null) {
+            selectedEmail.getAttachments().remove(att);
+        }
+    }
+
+    public void addAttachment() {
+        if (newAttachment == null || selectedEmail == null) {
+            return;
+        }
+
+        try {
+            // Read stream into byte[] immediately
+            byte[] fileBytes = inputStreamToByteArray(newAttachment.getInputStream());
+
+            AttachmentData attach = new AttachmentData();
+            attach.setId(java.util.UUID.randomUUID().toString());
+            attach.setFileName(newAttachment.getFileName());
+            attach.setContent(fileBytes); // ← store bytes
+
+            if (selectedEmail.getAttachments() == null) {
+                selectedEmail.setAttachments(new ArrayList<>());
+            }
+            selectedEmail.getAttachments().add(attach);
+
+            FacesContext.getCurrentInstance().addMessage(null,
+                    new FacesMessage("Attachment added: " + newAttachment.getFileName()));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            FacesContext.getCurrentInstance().addMessage(null,
+                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Error", "Failed to add attachment"));
+        } finally {
+            newAttachment = null; // Clear uploaded file
+        }
+    }
+
+    // Add this helper method to MsgReaderBean
+    private byte[] inputStreamToByteArray(InputStream is) throws Exception {
+        java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
+        byte[] data = new byte[8192];
+        int nRead;
+        while ((nRead = is.read(data, 0, data.length)) != -1) {
+            buffer.write(data, 0, nRead);
+        }
+        buffer.close();
+        return buffer.toByteArray();
+    }
+
+    public void prepareEdit(EmailData email) {
+        if (email != null) {
+            // store original
+            this.selectedEmail = email;    // clone for editing
+            System.out.println("=== PREPARE EDIT: cloned email with ID " + selectedEmail.getId());
+        }
+    }
+
+    public void handleFileUpload(FileUploadEvent event) {
+        UploadedFile uploadedFile = event.getFile();
+        if (selectedEmail == null) {
+            FacesContext.getCurrentInstance().addMessage(null,
+                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Error", "No email selected."));
+            return;
+        }
+
+        try {
+            byte[] fileBytes = inputStreamToByteArray(uploadedFile.getInputStream());
+            AttachmentData att = new AttachmentData(uploadedFile.getFileName(), fileBytes);
+
+            if (selectedEmail.getAttachments() == null) {
+                selectedEmail.setAttachments(new ArrayList<>());
+            }
+            selectedEmail.getAttachments().add(att);
+
+            FacesContext.getCurrentInstance().addMessage(null,
+                    new FacesMessage("Added: " + uploadedFile.getFileName()));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            FacesContext.getCurrentInstance().addMessage(null,
+                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Upload failed", e.getMessage()));
+        }
+    }
+
+    // Save changes from cloned object back to original list
+    public void saveEditedEmail() {
+        if (selectedEmail == null) {
+            return;
+        }
+        EmailData original = list.stream()
+                .filter(e -> e.getId().equals(selectedEmail.getId()))
+                .findFirst()
+                .orElse(null);
+
+        if (original != null) {
+            original.setSubject(selectedEmail.getSubject());
+            original.setSender(selectedEmail.getSender());
+            original.setToList(selectedEmail.getToList());
+            original.setCcList(selectedEmail.getCcList());
+            original.setBody(selectedEmail.getBody());
+            List<AttachmentData> updatedAttachments = selectedEmail.getAttachments().stream()
+                    .map(att -> new AttachmentData(att.getFileName(), att.getContent()))
+                    .collect(Collectors.toList());
+            original.setAttachments(updatedAttachments);
+        }
+
+        FacesContext.getCurrentInstance().addMessage(null,
+                new FacesMessage(FacesMessage.SEVERITY_INFO,
+                        "Success",
+                        "Email updated Successfully"));
+        System.out.println("Saving email with ID: " + selectedEmail.getId()
+                + ", attachments count: " + selectedEmail.getAttachments().size());
+
+        selectedEmail = null;
+    }
+
+    public EmailData getOriginalEmail() {
+        return originalEmail;
+    }
+
+    public void setOriginalEmail(EmailData originalEmail) {
+        this.originalEmail = originalEmail;
+    }
+
+    public void cancelEdit() {
+        selectedEmail = new EmailData();
+    }
+
+    public UploadedFile getNewAttachment() {
+        return newAttachment;
+    }
+
+    public void setNewAttachment(UploadedFile newAttachment) {
+        this.newAttachment = newAttachment;
     }
 
 }
