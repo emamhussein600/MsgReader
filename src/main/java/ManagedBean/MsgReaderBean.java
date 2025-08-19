@@ -142,19 +142,11 @@ public class MsgReaderBean implements Serializable {
         System.out.println("The object is From Print method : " + processed);
     }
 
-    public StreamedContent downloadAttachment(AttachmentData attachment) {
-        return DefaultStreamedContent.builder()
-                .name(attachment.getFileName())
-                .contentType("application/octet-stream")
-                .stream(() -> attachment.getFileContent())
-                .build();
-    }
-
     public void prepareEdit(EmailData email) {
         if (email != null) {
             // store original
             this.selectedEmail = email;    // clone for editing
-            System.out.println("=== PREPARE EDIT: cloned email with ID " + selectedEmail.getId());
+            System.out.println("=== PREPARE EDIT:  email with ID " + selectedEmail.getId());
         }
     }
 
@@ -187,13 +179,41 @@ public class MsgReaderBean implements Serializable {
         System.out.println("Saving email with ID: " + selectedEmail.getId()
                 + ", attachments count: " + selectedEmail.getAttachments().size());
 
-        selectedEmail = null;
+        selectedEmail = new EmailData();
+    }
+
+    public void deleteEmail(EmailData email) {
+        if (email != null) {
+            list.remove(email);
+            FacesContext.getCurrentInstance().addMessage(null,
+                    new FacesMessage(FacesMessage.SEVERITY_INFO,
+                            "Deleted",
+                            "Email deleted successfully"));
+
+            System.out.println("Deleted email with ID: " + email.getId());
+            if (selectedEmail != null && selectedEmail.getId().equals(email.getId())) {
+                selectedEmail = null;
+            }
+        } else {
+            FacesContext.getCurrentInstance().addMessage(null,
+                    new FacesMessage(FacesMessage.SEVERITY_WARN,
+                            "Warning",
+                            "No email selected to delete"));
+        }
     }
 
     public void removeAttachment(AttachmentData att) {
         if (selectedEmail != null && selectedEmail.getAttachments() != null) {
             selectedEmail.getAttachments().remove(att);
         }
+    }
+
+    public StreamedContent downloadAttachment(AttachmentData attachment) {
+        return DefaultStreamedContent.builder()
+                .name(attachment.getFileName())
+                .contentType("application/octet-stream")
+                .stream(() -> attachment.getFileContent())
+                .build();
     }
 
     public void handleFileUpload(FileUploadEvent event) {
@@ -223,7 +243,7 @@ public class MsgReaderBean implements Serializable {
         }
     }
 
-    // Add this helper method to MsgReaderBean
+    // Add this helper method to handleFileUpload
     private byte[] inputStreamToByteArray(InputStream is) throws Exception {
         java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
         byte[] data = new byte[8192];

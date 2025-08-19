@@ -5,11 +5,6 @@
                 xmlns:p="http://primefaces.org/ui"
                 template="/WEB-INF/template.xhtml">
     <ui:define name="title">Import Correspondence Email</ui:define>
-    <ui:define name="breadcrumb">
-        <li>
-            <p:link outcome="/importCorrespondenceEmail">#{guestPreferences.translate('ImportCorrespondencePage')}</p:link>
-        </li>
-    </ui:define>
     <ui:define name="content">
         <h:form id="mainForm" prependId="false" enctype="multipart/form-data">
             <p:growl id="msgs" life="3000" showDetail="true"/>
@@ -42,10 +37,9 @@
                 stripedRows="true" 
                 rowHover="true" 
                 scrollable="true" scrollWidth="100%"
-                selectionMode="single"
-                selection="#{msgReaderBean.selectedEmail}" 
                 rowKey="#{email.id}"
                 rowIndexVar="index"
+                paginatorPosition="bottom"
                 paginator="true" rows="10">
 
                 <!-- Row Number -->
@@ -55,13 +49,13 @@
 
                 <!-- From Column -->
                 <p:column headerText="From" style="width:150px; overflow:hidden;"
-                          filterBy="#{email.sender}" filterMatchMode="contains" sortable="true">
+                          filterBy="#{email.sender}" filterMatchMode="contains" sortable="true" sortBy="#{email.sender}">
                     <h:outputText value="#{email.sender}" />
                 </p:column>
 
                 <!-- To Column -->
                 <p:column headerText="To" style="width:200px; overflow:hidden;"
-                          filterBy="#{email.toListAsString}" filterMatchMode="contains" sortable="true">
+                          filterBy="#{email.toListAsString}" filterMatchMode="contains" sortable="true" sortBy="#{email.toListAsString}">
                     <ui:repeat value="#{email.toList}" var="to">
                         <h:outputText value="#{to}" /><br/>
                     </ui:repeat>
@@ -69,7 +63,7 @@
 
                 <!-- Cc Column -->
                 <p:column headerText="Cc" style="width:200px; overflow:hidden;"
-                          filterBy="#{email.ccListAsString}" filterMatchMode="contains" sortable="true">
+                          filterBy="#{email.ccListAsString}" filterMatchMode="contains" sortable="true" sortBy="#{email.ccListAsString}">
                     <ui:repeat value="#{email.ccList}" var="ccx">
                         <h:outputText value="#{ccx}" /><br/>
                     </ui:repeat>
@@ -77,13 +71,13 @@
 
                 <!-- Subject Column -->
                 <p:column headerText="Subject" style="width:200px; overflow:hidden;"
-                          filterBy="#{email.subject}" filterMatchMode="contains" sortable="true">
+                          filterBy="#{email.subject}" filterMatchMode="contains" sortable="true" sortBy="#{email.subject}">
                     <h:outputText value="#{email.subject}" />
                 </p:column>
 
                 <!-- Body Column -->
                 <p:column headerText="Body" style="width:200px; overflow:hidden;"
-                          filterBy="#{email.body}" filterMatchMode="contains" sortable="true">
+                          filterBy="#{email.body}" filterMatchMode="contains" sortable="true" sortBy="#{email.body}">
                     <h:outputText value="#{email.body}" escape="false" />
                 </p:column>
 
@@ -97,201 +91,227 @@
                         </p:commandLink>
                     </ui:repeat>
                 </p:column>
+                <p:column headerText="Actions" style="width:240px; text-align:center;">
+                    <h:panelGroup style="display: flex; justify-content: space-around;">
+                        <!-- Create Button -->
+                        <p:commandButton 
+                            id="createBtn" 
+                            value="" 
+                            icon="pi pi-plus" 
+                            styleClass="ui-button-success ui-button-rounded ui-button-sm"
+                            title="Create Correspondence Mail"
+                            update="@form"
+                            style="transition: transform 0.2s;"
+                            onmouseover="this.style.transform = 'scale(1.5)';"
+                            onmouseout="this.style.transform = 'scale(1)';"/>
 
-                <!-- Create Button -->
-                <p:column headerText="" style="width:80px; text-align:center;">
-                    <p:commandButton 
-                        id="createBtn" 
-                        value="" 
-                        icon="pi pi-plus" 
-                        styleClass="p-button-rounded p-button-success p-button-sm"
-                        title="Create Correspondence"
-                        update="@form" 
-                        style="transition: transform 0.2s;"
-                        onmouseover="this.style.transform = 'scale(1.2)';"
-                        onmouseout="this.style.transform = 'scale(1)';"/>
-                </p:column>
+                        <!-- Edit Button -->
+                        <p:commandButton 
+                            value="" 
+                            icon="pi pi-pencil" 
+                            styleClass="ui-button-info ui-button-rounded ui-button-sm"
+                            update=":mainForm:editEmailDialog"
+                            oncomplete="PF('emailDialog').show()"
+                            actionListener="#{msgReaderBean.prepareEdit(email)}"
+                            title="Edit Correspondence Mail"
+                            style="transition: transform 0.2s;"
+                            onmouseover="this.style.transform = 'scale(1.5)';"
+                            onmouseout="this.style.transform = 'scale(1)';"/>
 
-                <!-- Edit Button -->
-                <p:column headerText="" style="width:80px; text-align:center;">
-                    <p:commandButton 
-                        value="" 
-                        icon="pi pi-pencil" 
-                        styleClass="p-button-rounded p-button-info p-button-sm"
-                        update=":mainForm:editEmailDialog"
-                        oncomplete="PF('emailDialog').show()"
-                        actionListener="#{msgReaderBean.prepareEdit(email)}"
-                        title="Edit Correspondence"
-                        style="transition: transform 0.2s;"
-                        onmouseover="this.style.transform = 'scale(1.2)';"
-                        onmouseout="this.style.transform = 'scale(1)';"/>
+                        <!-- Delete Button -->
+                        <p:commandButton 
+                            value="" 
+                            icon="pi pi-trash" 
+                            styleClass="ui-button-danger ui-button-rounded ui-button-sm"
+                            update="emailsTable msgs"
+                            actionListener="#{msgReaderBean.deleteEmail(email)}"
+                            title="Delete Correspondence Mail"
+                            style="transition: transform 0.2s;"
+                            onmouseover="this.style.transform = 'scale(1.5)';"
+                            onmouseout="this.style.transform = 'scale(1)';"/>
+                    </h:panelGroup>
                 </p:column>
             </p:dataTable>
             <p:dialog id="editEmailDialog" 
-                      header="Edit Email" 
                       widgetVar="emailDialog"
                       modal="true" 
-                      closable="true" 
-                      resizable="false"
-                      showEffect="fade" hideEffect="fade"
-                      styleClass="responsive-dialog"
-                      style="max-height: 70vh; overflow-y: auto; width: 600px;">
+                      responsive="true" 
+                      position="center"
+                      closable="false" 
+                      resizable="true"
+                      styleClass="action"
+                      showEffect="fade"
+                      style="width: 90%; max-width: 1200px; max-height: 90vh;">
+
+                <!-- Close Ajax Event -->
+                <p:ajax event="close" update=":mainForm:emailsTable" global="false" />
 
                 <h:form id="editForm">
-                    <p:outputPanel rendered="#{msgReaderBean.selectedEmail != null}" layout="block" styleClass="dialog-content">
+                    <!-- Only render content if email is selected -->
+                    <div style="display: flex; flex-direction: column; height: 80vh;">
 
-                        <!-- Email Fields -->
-                        <div class="fadeField field-group">
-                            <label for="dlgSubject">Subject:</label>
-                            <p:inputText id="dlgSubject" value="#{msgReaderBean.selectedEmail.subject}" 
-                                         required="true" styleClass="full-width"/>
-                        </div>
-                        <div class="fadeField field-group">
-                            <label for="dlgFrom">From:</label>
-                            <p:inputText id="dlgFrom" value="#{msgReaderBean.selectedEmail.sender}" 
-                                         validator="#{msgReaderBean.validateEmailList}" 
-                                         styleClass="full-width"/>
-                        </div>
-                        <div class="fadeField field-group">
-                            <label for="dlgTo">To:</label>
-                            <p:inputTextarea id="dlgTo" value="#{msgReaderBean.selectedEmail.toListAsString}" 
-                                             rows="3" styleClass="full-width"
-                                             validator="#{msgReaderBean.validateEmailList}"/>
-                        </div>
-                        <div class="fadeField field-group">
-                            <label for="dlgCc">Cc:</label>
-                            <p:inputTextarea id="dlgCc" value="#{msgReaderBean.selectedEmail.ccListAsString}" 
-                                             rows="3" styleClass="full-width"
-                                             validator="#{msgReaderBean.validateEmailList}"/>
-                        </div>
-                        <div class="fadeField field-group">
-                            <label for="dlgBody">Body:</label>
-                            <p:inputTextarea id="dlgBody" value="#{msgReaderBean.selectedEmail.body}" 
-                                             rows="5" styleClass="full-width"/>
-                        </div>
+                        <p:panel rendered="#{msgReaderBean.selectedEmail != null}">
+                            <p:fieldset legend="Edit Email" style="font-size: 25px; font-weight: bold;">
 
-                        <!-- Attachments Panel -->
-                        <p:outputPanel id="attachmentsPanel">
-                            <ui:repeat value="#{msgReaderBean.selectedEmail.attachments}" var="att">
-                                <div class="attachment-row">
-                                    <p:inputText value="#{att.fileName}" styleClass="attachment-name"/>
-                                    <p:commandButton value="Remove" icon="pi pi-times"
-                                                     actionListener="#{msgReaderBean.removeAttachment(att)}"
-                                                     update=":editForm:attachmentsPanel :mainForm:emailsTable"
-                                                     ajax="true"
-                                                     process="@this"
-                                                     styleClass="remove-btn"/>
+                                <!-- Main flex container -->
+                                <div style="display: flex; flex-direction: column; min-height: 400px; height: 100%;">
+
+                                    <!-- Scrollable Content -->
+                                    <div style="flex: 1; overflow-y: auto; padding: 0.5rem;">
+                                        <p:panelGrid columns="2" layout="grid" columnClasses="ui-fluid" style="width: 100%; gap: 1rem;">
+
+                                            <!-- Row 1: Subject + From -->
+                                            <p:row>
+                                                <p:column>
+                                                    <h:panelGroup>
+                                                        <i class="pi pi-envelope" style="font-size: 15px; margin-right: 5px;" />
+                                                        <p:outputLabel for="dlgSubject" value="Subject:" style="font-size: 16px;" />
+                                                    </h:panelGroup>
+                                                    <p:inputText id="dlgSubject" 
+                                                                 value="#{msgReaderBean.selectedEmail.subject}" 
+                                                                 style="width: 100%" />
+                                                    <p:message for="dlgSubject" display="text" style="color:red;" />
+                                                </p:column>
+                                                <p:column>
+                                                    <h:panelGroup>
+                                                        <i class="pi pi-user" style="font-size: 15px; margin-right: 5px;" />
+                                                        <p:outputLabel for="dlgFrom" value="From:" style="font-size: 16px;" />
+                                                    </h:panelGroup>
+                                                    <p:inputText id="dlgFrom" 
+                                                                 value="#{msgReaderBean.selectedEmail.sender}" 
+                                                                 validator="#{msgReaderBean.validateEmailList}" 
+                                                                 readonly="true" 
+                                                                 style="width: 100%" />
+                                                    <p:message for="dlgFrom" display="text" style="color:red;" />
+                                                </p:column>
+                                            </p:row>
+
+                                            <!-- Row 2: To + Cc -->
+                                            <p:row>
+                                                <p:column>
+                                                    <h:panelGroup>
+                                                        <i class="pi pi-user-plus" style="font-size: 15px; margin-right: 5px;" />
+                                                        <p:outputLabel for="dlgTo" value="To:" style="font-size: 16px;" />
+                                                    </h:panelGroup>
+                                                    <p:inputTextarea id="dlgTo" 
+                                                                     value="#{msgReaderBean.selectedEmail.toListAsString}" 
+                                                                     rows="3" 
+                                                                     style="width: 100%" 
+                                                                     validator="#{msgReaderBean.validateEmailList}" />
+                                                    <p:message for="dlgTo" display="text" style="color:red;" />
+                                                </p:column>
+                                                <p:column>
+                                                    <h:panelGroup>
+                                                        <i class="pi pi-share-alt" style="font-size: 15px; margin-right: 5px;" />
+                                                        <p:outputLabel for="dlgCc" value="Cc:" style="font-size: 16px;" />
+                                                    </h:panelGroup>
+                                                    <p:inputTextarea id="dlgCc" 
+                                                                     value="#{msgReaderBean.selectedEmail.ccListAsString}" 
+                                                                     rows="3" 
+                                                                     style="width: 100%" 
+                                                                     validator="#{msgReaderBean.validateEmailList}" />
+                                                    <p:message for="dlgCc" display="text" style="color:red;" />
+                                                </p:column>
+                                            </p:row>
+
+                                        </p:panelGrid>
+
+                                        <p:panelGrid columns="1" layout="grid" columnClasses="ui-fluid" style="width: 100%; gap: 1rem;">
+                                            <!-- Row 3: Body (Full Width) -->
+                                            <p:row style="margin-top: 1rem;">
+                                                <p:column colspan="2">
+                                                    <h:panelGroup>
+                                                        <i class="pi pi-align-left" style="font-size: 15px; margin-right: 5px;" />
+                                                        <p:outputLabel for="dlgBody" value="Body:" style="font-size: 16px;" />
+                                                    </h:panelGroup>
+                                                    <p:inputTextarea id="dlgBody" 
+                                                                     value="#{msgReaderBean.selectedEmail.body}" 
+                                                                     rows="6" 
+                                                                     style="width: 100%; max-height: 150px; overflow-y: auto;" />
+                                                </p:column>
+                                            </p:row>
+
+                                            <!-- Row 4: Attachments -->
+                                            <p:row style="margin-top: 1rem;">
+                                                <p:column colspan="2">
+                                                    <h:panelGroup>
+                                                        <i class="pi pi-paperclip" style="font-size: 15px; margin-right: 5px;" />
+                                                        <p:outputLabel value="Attachments:" style="font-size: 16px;" />
+                                                    </h:panelGroup>
+                                                    <p:outputPanel id="attachmentsPanel">
+                                                        <ui:repeat value="#{msgReaderBean.selectedEmail.attachments}" var="att" varStatus="status">
+                                                            <div style="display: flex; align-items: center; margin-bottom: 5px;">
+                                                                <h:outputText value="#{status.index + 1}. " style="font-weight: bold;" />
+                                                                <p:inputText value="#{att.fileName}" style="width: 70%; margin-right: 5px;" />
+                                                                <p:commandButton icon="pi pi-times"
+                                                                                 actionListener="#{msgReaderBean.removeAttachment(att)}"
+                                                                                 title="Remove"
+                                                                                 process="@this"
+                                                                                 update=":editForm:attachmentsPanel" 
+                                                                                 styleClass="ui-button-danger ui-button-sm" />
+                                                            </div>
+                                                        </ui:repeat>
+                                                    </p:outputPanel>
+                                                    <p:fileUpload id="attachmentUpload"
+                                                                  mode="advanced"
+                                                                  listener="#{msgReaderBean.handleFileUpload}"
+                                                                  label="Add Attachment"
+                                                                  skinSimple="true"
+                                                                  style="margin-top: 10px;"
+                                                                  update=":editForm:attachmentsPanel" />
+                                                </p:column>
+                                            </p:row>
+                                        </p:panelGrid>
+                                    </div>
+
+                                    <!-- Footer Buttons (Fixed at Bottom) -->
+                                    <div style="flex-shrink: 0; padding-top: 10px; border-top: 1px solid #eee; margin-top: 10px; text-align: right;">
+                                        <p:commandButton value="Cancel"
+                                                         onclick="PF('emailDialog').hide(); return false;"
+                                                         process="@this"
+                                                         styleClass="ui-button-raised ui-button-secondary" 
+                                                         style="margin-right: 10px;"/>
+
+                                        <p:commandButton value="Save"
+                                                         action="#{msgReaderBean.saveEditedEmail}"
+                                                         process="@form"
+                                                         update=":mainForm:emailsTable :editForm :mainForm:msgs"
+                                                         oncomplete="if (!args.validationFailed) PF('emailDialog').hide();"
+                                                         styleClass="ui-button-raised ui-button-success" />
+                                    </div>
                                 </div>
-                            </ui:repeat>
-                        </p:outputPanel>
-                        <!-- File Upload -->
-                        <p:fileUpload id="attachmentUpload"
-                                      mode="advanced"
-                                      auto="true"
-                                      listener="#{msgReaderBean.handleFileUpload}"
-                                      label="Add Attachment"
-                                      skinSimple="true"
-                                      styleClass="custom-fileupload"
-                                      update="attachmentsPanel" />
-                    </p:outputPanel>
-                    <!-- Footer Buttons -->
-                    <div class="dialog-footer">
-                        <p:commandButton value="Cancel"
-                                         onclick="PF('emailDialog').hide(); return false;"
-                                         process="@this"
-                                         styleClass="p-button-secondary"/>
-                        <p:commandButton value="Save"
-                                         action="#{msgReaderBean.saveEditedEmail}"
-                                         update=":mainForm:emailsTable :mainForm:msgs"
-                                         process="@form"
-                                         oncomplete="PF('emailDialog').hide()" 
-                                         styleClass="p-button-primary"/>
+                            </p:fieldset>
+                        </p:panel>
+
+                        <!-- Placeholder when no email selected -->
+                        <h:panelGroup rendered="#{msgReaderBean.selectedEmail == null}" style="padding: 20px; color: #999;">
+                            No email selected. Please select an email to edit.
+                        </h:panelGroup>
                     </div>
                 </h:form>
+
+                <!-- Optional: Match editAction style -->
                 <h:outputStylesheet>
-                    .dialog-footer {
-                    display: flex;
-                    justify-content: flex-end;
-                    gap: 0.5rem;
-                    margin-top: 1rem;
-                    position: sticky;
-                    bottom: 0;
-                    background: #fff;
-                    padding-top: 0.5rem;
-                    }
-                    .fadeField {
-                    opacity: 0;
-                    transform: translateY(10px);
-                    animation: fadeInUp 0.5s forwards;
-                    margin-bottom: 1rem;
-                    }
-                    @keyframes fadeInUp {
-                    to {
-                    opacity: 1;
-                    transform: translateY(0);
-                    }
+                    .ui-panelgrid {
+                    gap: 1rem !important;
                     }
 
-                    .dialog-content {
+                    .ui-panelgrid .ui-panelgrid-cell {
+                    padding: 0.5rem 0;
+                    }
+
+                    /* Responsive: Stack on small screens */
+                    @media (max-width: 768px) {
+                    .ui-panelgrid {
                     display: flex;
                     flex-direction: column;
-                    gap: 1rem;
                     }
-
-                    .field-group label {
-                    display: block;
-                    font-weight: bold;
-                    margin-bottom: 0.25rem;
-                    }
-
-                    .full-width {
+                    .ui-panelgrid > .ui-panelgrid-cell {
                     width: 100%;
-                    }
-
-                    .attachment-row {
-                    display: flex;
-                    align-items: center;
-                    gap: 0.5rem;
-                    margin-bottom: 0.25rem;
-                    flex-wrap: wrap;
-                    }
-
-                    .attachment-name {
-                    flex: 1 1 60%;
-                    }
-
-                    .remove-btn {
-                    flex: 0 0 auto;
-                    }
-
-                    .dialog-footer {
-                    display: flex;
-                    justify-content: flex-end;
-                    gap: 0.5rem;
-                    margin-top: 1rem;
-                    }
-
-                    /* Responsive for smaller screens */
-                    @media (max-width: 600px) {
-                    .attachment-row {
-                    flex-direction: column;
-                    align-items: stretch;
-                    }
-                    .remove-btn {
-                    align-self: flex-start;
                     }
                     }
                 </h:outputStylesheet>
-                <h:outputScript>
-                    function resetUploadWidget() {
-                    var input = document.getElementById('editEmailDialogForm:attachmentUpload_input');
-                    if (input) {
-                    input.value = '';
-                    }
-                    }
-                </h:outputScript>
             </p:dialog>
-
         </h:form>
         <!-- CSS for fade-in effect -->
     </ui:define>
